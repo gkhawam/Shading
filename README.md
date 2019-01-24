@@ -4,7 +4,7 @@ The algorithm first creates a two dimensional mesh for the top plane of the geom
 The model crashes in early morning and late afternoon.
 A seperate program runs the shading algorithm over the year in a given location then compile a set of data and create a surface regression equation that calulates shading in the experimental raceways as a function of time.  
 The same approach can be used to calculate shaded area in different geometries and for different systems.
-further information and references on this topic can be found in my dissertation: TEMPERATURE, EVAPORATION, AND SHADING EFFECTS ON ALGAE IN EXPERIMENTAL PADDLEWHEEL RACEWAYS. 
-Please see license before using the code
+further information and references on this topic can be found in my dissertation: "TEMPERATURE, EVAPORATION, AND SHADING EFFECTS ON ALGAE IN EXPERIMENTAL PADDLEWHEEL RACEWAYS". 
+Please see license before using the code.
 George Khawam 
 """
