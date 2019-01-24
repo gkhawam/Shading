@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Apr 24 12:49:00 2018
-
 @author: gkhawam
-        gao, song
+
+This model will not run unless you provide solar angles (zenith and azimuth) instead of the function in line 85.
+the solar model was not included because it was not done by me
+you can go to differnet websites that gives you solar position when you input time and location
+https://www.esrl.noaa.gov/gmd/grad/solcalc/azel.html
+
+get the solar position from other source, plug it in line 85 and you should be golden.
 """
 import numpy as np
 import math as m
@@ -35,93 +40,6 @@ def two_intersection(x1serie,y1serie,x2serie,y2serie,num_points):
     # it will be used as a numerical threshold 
     return idx_geo1,idx_shade1,idx_geo2,idx_shade2,m
 
-
-# the solar model is developed by Gao, song                   
-def solar_model(time, year, location = None, longitude = None, latitude = None, elevation = None, timezone = None):
-    '''
-    The function calculates for zenith angle and azimuth angle in radians.
-    time: (DOY)
-    starting_DOY:starting day for the simulation
-    year: the year of the simulation
-    location: city, not required, but I set geographic info. for some cities we simulate regularly
-    elevation (m):
-    longitude (deg):
-    latitude (deg):
-    timezone: UTC time zone
-    '''
-    check_list = [location, longitude, latitude, elevation, timezone]
-    if check_list.count(None) == len(check_list) :
-        print('The function requires longitude, latitude, elevation, timezone \n')
-        print('Or input location = Tucson, Mesa')
-        sys.exit()
-    
-    geo_info = {#'city':[latitude, longitude, UCT-tz, elevation]
-                'Tucson':[32.28, -110.95, -7, 800],
-                'Mesa':[],
-                'Pecos':[]}
-    
-    if location in geo_info:
-        latitude = geo_info[location][0]
-        longitude = geo_info[location][1]
-        timezone = geo_info[location][2]
-        elevation = geo_info[location][3]
-    else:
-        print('Please input latitude, longitude, timezone and elevation')
-    lat_r = latitude/180*np.pi
-    lon_r = longitude/180*np.pi
-    
-    n = 0
-    for i in range(1900,year):
-        if i%4 == 0:
-            n += 366
-        else:
-            n+=365
-    JulD = n + time + 2415018.5 - (timezone)/24
-    LT = time - int(time)
-    JC = (JulD - 2451545) / 36525
-    x = 46.815 + JC * (0.00059 - JC * 0.001813)
-    M_OE = 23 + (26 + (21.448 - JC * x) / 60) / 60
-    EEO = 0.016708634 - JC * (0.000042037 + 0.0000001267 * JC)
-    GMAS = 357.52911 + JC * (35999.05029 - 0.0001537 * JC)
-    GMAS_r = m.radians(GMAS)
-    GMLS = (280.46646 + JC * (36000.76983 + JC * 0.0003032))%360
-    GMLS_r = m.radians(GMLS)
-    Obliq_C = M_OE + 0.00256 * np.cos((125.04 - 1934.136 * JC) / 180 * np.pi)
-    Obliq_C_r = m.radians(Obliq_C)
-    
-    SEC = np.sin(GMAS_r) * (1.914602 - JC * (0.004817 + 0.000014 * JC)) + np.sin(2 * GMAS_r) * (0.019993 - 0.000101 * JC) + np.sin(3 * GMAS_r) * 0.000289
-    STL = GMLS + SEC
-    SAL = STL - 0.00569 - 0.00478 * np.sin((125.04 - 1934.136 * JC) / 180 * np.pi)
-    SAL_r = m.radians(SAL)
-    sin_Delta = np.sin(Obliq_C_r) * np.sin(SAL_r)
-    Delta_r = np.arcsin(sin_Delta)     #in radians   
-    Var_y = np.tan((Obliq_C / 2) / 180 * np.pi) * np.tan((Obliq_C / 2) / 180 * np.pi)
-    EOT_prime = Var_y * np.sin(2 * GMLS_r) - 2 * EEO * np.sin(GMAS_r) + 4 * EEO * Var_y * np.sin(GMAS_r) * np.cos(2 * GMLS_r) - 0.5 * Var_y * Var_y * np.sin(4 * GMLS_r) - 1.25 * EEO * EEO * np.sin(2 * GMAS_r)
-    EOT = 4 * EOT_prime / np.pi * 180
-            
-    TST = (LT * 1440 + EOT + 4 * longitude - 60 * timezone)%1440
-    if TST / 4 < 0:
-        Omega = TST/4+180
-    else:
-        Omega = TST/4 - 180
-        
-    Omega_r = m.radians(Omega)
-    cos_Zenith = np.sin(lat_r) * np.sin(Delta_r) + np.cos(lat_r) * np.cos(Delta_r) * np.cos(Omega_r)
-    Zenith_r = np.arccos(cos_Zenith)             #in radians
-    
-    Aprime_r = np.arccos((np.sin(lat_r) * np.cos(Zenith_r) - np.sin(Delta_r)) / (np.cos(lat_r) * np.sin(Zenith_r)))
-    Aprime = Aprime_r / np.pi * 180
-    
-    if Omega > 0:
-        Azimuth = (Aprime + 180) % 360   #in degrees
-    else:
-        Azimuth = (540 - Aprime) % 360   #in degrees                
-    Azimuth_r = Azimuth / 180 * np.pi
-    
-    
-    return Zenith_r, Azimuth_r
-
-# if you want to change location you need to fill geometrical info in line 60
 location = 'Tucson'
 year = 2016
 #the orientation of the raceway straight part
@@ -139,6 +57,7 @@ snap_second = 0
 
 Pi = np.pi
 # Geometry input parameters, you can use any unit you want, the units here are in inch
+
 # the distance between the water surface and the top of the paddlewheel     
 roughness = 7.5 
 # the thickness of the middle bar
@@ -165,14 +84,15 @@ DOY = DOY + snap_hour/24 + snap_minute/24/60 + snap_second/24/3600
 finite_angle = Pi / 2 / (ang_inc)
 finite_base = 2 * radius * np.sin(finite_angle)
 
-# first value of solar_angles is zenith, 2nd is azimuth
+# there is a function called solar_model that was developed by a colleague and not included in this program.
+# this function returns two values that determine the solar position based on time and loaction
+# first value of solar_angles is solar zenith angle, 2nd is solar azimuth angle.
+
 solar_angles = solar_model(DOY,year,location)
 Zenith = solar_angles[0]
 Azimuth_N = solar_angles[1]     # Azimuth with north is the reference going east
-
 Elev_angle = Pi/2 - Zenith
 Azimuth_S = Pi + Azimuth_N      # Azimuth with the south is the reference and going west
-
 
 delta_y = (roughness / np.tan(Elev_angle)) * np.cos(Azimuth_S)      #in inch
 delta_x = (roughness / np.tan(Elev_angle)) * np.sin(Azimuth_S)      #in inch
