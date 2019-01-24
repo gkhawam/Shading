@@ -3,7 +3,7 @@
 Created on Wed May 23 09:21:41 2018
 
 @author: gkhawam
-        gao, song
+See shading_generator for remarks about the solar model
 """
 import numpy as np
 import math as m
@@ -11,7 +11,6 @@ import pandas as pd
 import datetime as dt
 import matplotlib.pyplot as plt
 import sys
-from openpyxl import load_workbook
 import scipy.linalg
 
 def two_intersection(x1serie,y1serie,x2serie,y2serie,num_points):
@@ -37,93 +36,7 @@ def two_intersection(x1serie,y1serie,x2serie,y2serie,num_points):
     # it will be used as a numerical threshold 
     return idx_geo1,idx_shade1,idx_geo2,idx_shade2,m
 
-
-# the solar model is developed by Gao, song                   
-def solar_model(time, year, location = None, longitude = None, latitude = None, elevation = None, timezone = None):
-    '''
-    The function calculates for zenith angle and azimuth angle in radians.
-    time: (DOY)
-    starting_DOY:starting day for the simulation
-    year: the year of the simulation
-    location: city, not required, but I set geographic info. for some cities we simulate regularly
-    elevation (m):
-    longitude (deg):
-    latitude (deg):
-    timezone: UTC time zone
-    '''
-    check_list = [location, longitude, latitude, elevation, timezone]
-    if check_list.count(None) == len(check_list) :
-        print('The function requires longitude, latitude, elevation, timezone \n')
-        print('Or input location = Tucson, Mesa')
-        sys.exit()
-    
-    geo_info = {#'city':[latitude, longitude, UCT-tz, elevation]
-                'Tucson':[32.28, -110.95, -7, 800],
-                'Mesa':[],
-                'Pecos':[]}
-    
-    if location in geo_info:
-        latitude = geo_info[location][0]
-        longitude = geo_info[location][1]
-        timezone = geo_info[location][2]
-        elevation = geo_info[location][3]
-    else:
-        print('Please input latitude, longitude, timezone and elevation')
-    lat_r = latitude/180*np.pi
-    lon_r = longitude/180*np.pi
-    
-    n = 0
-    for i in range(1900,year):
-        if i%4 == 0:
-            n += 366
-        else:
-            n+=365
-    JulD = n + time + 2415018.5 - (timezone)/24
-    LT = time - int(time)
-    JC = (JulD - 2451545) / 36525
-    x = 46.815 + JC * (0.00059 - JC * 0.001813)
-    M_OE = 23 + (26 + (21.448 - JC * x) / 60) / 60
-    EEO = 0.016708634 - JC * (0.000042037 + 0.0000001267 * JC)
-    GMAS = 357.52911 + JC * (35999.05029 - 0.0001537 * JC)
-    GMAS_r = m.radians(GMAS)
-    GMLS = (280.46646 + JC * (36000.76983 + JC * 0.0003032))%360
-    GMLS_r = m.radians(GMLS)
-    Obliq_C = M_OE + 0.00256 * np.cos((125.04 - 1934.136 * JC) / 180 * np.pi)
-    Obliq_C_r = m.radians(Obliq_C)
-    
-    SEC = np.sin(GMAS_r) * (1.914602 - JC * (0.004817 + 0.000014 * JC)) + np.sin(2 * GMAS_r) * (0.019993 - 0.000101 * JC) + np.sin(3 * GMAS_r) * 0.000289
-    STL = GMLS + SEC
-    SAL = STL - 0.00569 - 0.00478 * np.sin((125.04 - 1934.136 * JC) / 180 * np.pi)
-    SAL_r = m.radians(SAL)
-    sin_Delta = np.sin(Obliq_C_r) * np.sin(SAL_r)
-    Delta_r = np.arcsin(sin_Delta)     #in radians   
-    Var_y = np.tan((Obliq_C / 2) / 180 * np.pi) * np.tan((Obliq_C / 2) / 180 * np.pi)
-    EOT_prime = Var_y * np.sin(2 * GMLS_r) - 2 * EEO * np.sin(GMAS_r) + 4 * EEO * Var_y * np.sin(GMAS_r) * np.cos(2 * GMLS_r) - 0.5 * Var_y * Var_y * np.sin(4 * GMLS_r) - 1.25 * EEO * EEO * np.sin(2 * GMAS_r)
-    EOT = 4 * EOT_prime / np.pi * 180
-            
-    TST = (LT * 1440 + EOT + 4 * longitude - 60 * timezone)%1440
-    if TST / 4 < 0:
-        Omega = TST/4+180
-    else:
-        Omega = TST/4 - 180
-        
-    Omega_r = m.radians(Omega)
-    cos_Zenith = np.sin(lat_r) * np.sin(Delta_r) + np.cos(lat_r) * np.cos(Delta_r) * np.cos(Omega_r)
-    Zenith_r = np.arccos(cos_Zenith)             #in radians
-    
-    Aprime_r = np.arccos((np.sin(lat_r) * np.cos(Zenith_r) - np.sin(Delta_r)) / (np.cos(lat_r) * np.sin(Zenith_r)))
-    Aprime = Aprime_r / np.pi * 180
-    
-    if Omega > 0:
-        Azimuth = (Aprime + 180) % 360   #in degrees
-    else:
-        Azimuth = (540 - Aprime) % 360   #in degrees                
-    Azimuth_r = Azimuth / 180 * np.pi
-    
-    
-    return Zenith_r, Azimuth_r
 Pi = np.pi
-
 # if you want to change location you need to fill geometrical info in line 60
 location = 'Tucson'
 year = 2016
@@ -354,20 +267,10 @@ print(C)
 shading model for the wall
 wall shaded area = C[0] + C[1]*delta_x  + C[2]*delta_y + C[3]*delta_x*delta_y + C[4]*(delta_x)^2 + C[5]*(delta_y)^2
 
-
 middle_shade = width *((delta_y*np.cos(orientation_angle))**2 + (delta_x*np.sin(orientation_angle))**2)**0.5
 paddle_shade =  2 * paddle_width * (radius - (delta_y*np.cos(orientation_angle) + np.abs(delta_x)*np.sin(orientation_angle) - medium_thickness / 2))
 
 tot_shade(delta_x,delta_y) = wall + middle + paddle
-and delta_x,delta_y are calculated and they are functions of solar angles and water depth (time)
+and delta_x,delta_y are calculated and they are functions of solar angles (time) and water depth 
 
 """
-
-
-#path_to_excel = 'Daily comparison.xlsx'
-#book = load_workbook(path_to_excel)
-#writer = pd.ExcelWriter(path_to_excel, engine = 'openpyxl')
-#writer.book = book
-#shading_script.to_excel(writer,sheet_name = 'shading', index=False)
-#writer.save()
-#writer.close() 
